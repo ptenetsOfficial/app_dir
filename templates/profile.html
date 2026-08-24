@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль</title>
+</head>
+<body>
+    <h1>Профиль</h1>
+    <h3>Добро пожаловать!</h3>
+    <p>Имя: {{ user[1] }}</p>
+    <p>Email: {{ user[2] }}</p>
+    <p><strong>Последний вход:</strong> {{ user[4] if user[4] else 'Нет данных' }}</p>
+    <a href="{{ url_for('add_post') }}"><button>Новый пост</button></a>
+    <a href="/">На главную</a>
+</body>
+</html>

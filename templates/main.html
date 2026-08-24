@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Главная страница</title>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Главная</h1>
+        <div class="auth-section">
+            {% if user_name %}
+            <p>Вы вошли как: <strong>{{ user_name }}</strong></p>
+            <a href="/logout">Выйти</a>
+            {% else %}
+            <a href="{{ url_for('register') }}">регистрация</a>
+            <a href="{{ url_for('login') }}">Вход</a>
+            {% endif %}
+
+        </div>
+    </div>
+
+    {% if user_name %}
+    <div class="user-actions">
+        <a href="{{ url_for('add_post') }}"><button>новый пост</button></a>
+    </div>
+    {% endif %}
+
+
+    <h2>Все посты:</h2>
+    <ul>
+        {% for post in posts %}
+        <li>
+            <h3>{{ post[1] }}</h3>
+            <p>{{ post[2] }}</p>
+            <p><em>Автор: {{ post[5] }} | Создан: {{ post[4] }}</em></p>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <h3>Все пользователи:</h3>
+    {% if users %}
+    <ul>
+        {% for user in users %}
+        <li>
+            <a href="{{ url_for('user_page', user_id=user[0]) }}">
+                {{ user[1] }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>Пользователей пока нет. <a href="{{ url_for('register') }}">Зарегистрируйтесь первым!</a></p>
+    {% endif %}
+</body>
+
+</html>
