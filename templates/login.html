@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=2) }}">
 </head>
 
 <body>
@@ -14,11 +13,12 @@
     <form method="POST">
         <input type="email" name="email" placeholder="Email" required>
         <input type="password" name="password" placeholder="Пароль" required>
-        <label class="remember-option" for="remember">
-            <input type="checkbox" id="remember" name="remember">
-            <span>Запомнить меня</span>
-        </label>
         <button type="submit">Войти</button>
     </form>
+        <div>
+            <input type="checkbox" id="remember" name="remember">
+            <label for="remember">Запомнить меня</label>
+        </div>
+        
 </body>
 </html>

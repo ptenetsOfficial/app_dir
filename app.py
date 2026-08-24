@@ -13,8 +13,6 @@ import time
 import hashlib
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)  # Секретный ключ для сессии
-app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 
 
@@ -22,10 +20,8 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 # Загружаем переменные окружения из .env файла
 load_dotenv()
 
-# Подключение к базе данных. Render создаст этот файл при первом запуске.
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_PATH = os.path.join(BASE_DIR, 'users.db')
-conn = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
+# Подключение к базе данных
+conn = sqlite3.connect('users.db', check_same_thread=False)
 cur = conn.cursor()
 
 # Создание таблицы пользователей
@@ -38,7 +34,14 @@ cur.execute('''CREATE TABLE IF NOT EXISTS users(
 )''')
 
 # Создание таблицы постов
-
+cur.execute('''CREATE TABLE IF NOT EXISTS posts(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            content TEXT,
+            user_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+)''')
 
 # Создание таблицы уведомлений
 cur.execute('''CREATE TABLE IF NOT EXISTS notifications(
@@ -66,70 +69,12 @@ cur.execute('''CREATE TABLE IF NOT EXISTS inbox_entries(
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )''')
 
-
-
-# Создание таблицы категорий
-cur.execute('''CREATE TABLE IF NOT EXISTS categories(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE NOT NULL,
-                description TEXT
-)''')
-
-# Создание таблицы постов
-cur.execute('''CREATE TABLE IF NOT EXISTS posts(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT,
-                content TEXT,
-                user_id INTEGER,
-                category_id INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id),
-                FOREIGN KEY (category_id) REFERENCES categories(id)
-
-)''')
-
-
-
-
+cur.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON posts(user_id)')
+cur.execute('CREATE INDEX IF NOT EXISTS idx_notif_user_id ON notifications(user_id)')
+cur.execute('CREATE INDEX IF NOT EXISTS idx_subscriber_email ON subscribers(email)')
 
 # Сохранение изменений в базе данных
 conn.commit()
-
-
-default_categories = [
-    ('Программирование', 'Статьи о программировании и разработке'),
-    ('Дизайн', 'Статьи о дизайнее и UX/UI'),
-    ('Путешествия', 'Рассказы о путешествиях'),
-    ('Кулинария', 'Рецепты и кулинарные советы'),
-    ('Спорт', 'Новости и статьи о спорте')
-]
-
-for category in default_categories:
-    cur.execute('INSERT OR IGNORE INTO categories(name, description) VALUES (?, ?)', category)
-
-
-
-def get_all_categories():
-    cur.execute('SELECT * FROM categories ORDER BY name')
-    return cur.fetchall()
-
-def get_all_users():
-    cur.execute('SELECT * FROM users')
-    return cur.fetchall()
-
-
-
-def get_posts_by_category(category_id):
-    cur.execute('''SELECT posts.*, users.name, categories.name as category_name
-                    FROM posts
-                    JOIN users ON posts.user_id = users.id
-                    LEFT JOIN categories ON posts.category_id = categories.id
-                    WHERE posts.category_id = ?
-                    ORDER BY posts.created_at DESC''',
-                [category_id])
-    return cur.fetchall()
-
-
 
 # Создает токен аутентификации
 def create_auth_token(user_id, remember=False):
@@ -239,28 +184,7 @@ cur.execute("CREATE INDEX IF NOT EXISTS idx_user_id ON posts(user_id)")
 cur.execute("CREATE INDEX IF NOT EXISTS idx_notif_user_id ON notifications(user_id)")
 cur.execute("CREATE INDEX IF NOT EXISTS idx_token ON auth_tokens(token)")
 
-cur.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON posts(user_id)')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_notif_user_id ON notifications(user_id)')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_token ON auth_tokens(token)')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_category_id ON posts(category_id)')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_post_title ON posts(title)')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_post_content ON posts(content)')
 
-cur.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON posts(user_id)')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_notif_user_id ON notifications(user_id)')
-cur.execute('CREATE INDEX IF NOT EXISTS idx_subscriber_email ON subscribers(email)')
-
-# Функция для поиска постов
-def search_posts(query):
-    search_pattern = f'%{query}%'
-    cur.execute('''SELECT posts.*, users.name, categories.name as category_name
-                    FROM posts
-                    JOIN users ON posts.user_id = users.id
-                    LEFT JOIN categories ON posts.category_id = categories.id
-                    WHERE posts.title LIKE ? OR posts.content LIKE ?
-                    ORDER BY posts.created_at DESC''',
-                [search_pattern, search_pattern])
-    return cur.fetchall()
 
 # Добавление/удаление/получение подписчиков
 def add_subscriber(email):
@@ -320,8 +244,8 @@ def get_user_by_email(email):
     return cur.fetchone()
 
 # Добавляет новый пост с привязкой к пользователю
-def add_new_post(title, content, user_id, category_id):
-    cur.execute('INSERT INTO posts(title, content, user_id, category_id) VALUES (?, ?, ?, ?)',[title, content, user_id, category_id])
+def add_new_post(title, content, user_id):
+    cur.execute('INSERT INTO posts(title, content, user_id) VALUES (?, ?, ?)', [title, content, user_id])
     conn.commit()
 
 # Возвращает посты пользователя
@@ -378,13 +302,8 @@ def check_auth():
 # Рендерим стартовую страницу
 @app.route('/')
 def main():
-    cur.execute('''SELECT posts.*, users.name, categories.name as category_name
-                   FROM posts
-                   JOIN users ON posts.user_id = users.id
-                   LEFT JOIN categories ON posts.category_id = categories.id
-                   ORDER BY posts.created_at DESC''')
-    posts = cur.fetchall()
-    users = get_all_users()
+    posts = cur.execute('SELECT posts.*, users.name FROM posts JOIN users ON posts.user_id = users.id ORDER BY posts.created_at DESC').fetchall()
+    users = cur.execute('SELECT * FROM users').fetchall()
 
     user_name = None
     if 'user_id' in session:
@@ -460,13 +379,12 @@ def register():
                 notify_subscribers_about_new_user(name, email)
             except Exception as e:
                 print(f"Ошибка при уведомлении подписчиков: {e}")
-            return redirect('/login')
+            return redirect('/login/')
         else:
             print('Такой пользователь уже есть')
     return render_template('register.html')
 
 # Процесс входа
-@app.route('/login', methods=['GET', 'POST'])
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -496,10 +414,9 @@ def login():
 
 # Профиль текущего пользователя
 @app.route('/profile')
-@app.route('/profile/')
 def profile():
     if 'user_id' not in session:
-        return redirect('/login')
+        return redirect('/login/')
     user_id = session['user_id']
     user = get_user_by_id(user_id)
     posts = get_posts_by_user(user_id)
@@ -507,38 +424,6 @@ def profile():
     if user:
         return render_template('profile.html', user=user, posts=posts, notifications=notifications)
     return "Пользователь не найден", 404
-
-
-# Маршрут для поиска
-@app.route('/search')
-def search():
-    query = request.args.get('q', '').strip()
-
-    if query:
-        posts = search_posts(query)
-        return render_template('main.html',
-                               posts=posts,
-                               users=get_all_users(),
-                               user_name=session.get('user_name'),
-                               search_query=query)
-
-    return redirect('/')
-
-# Маршрут для отображения постов по категории
-@app.route('/category/<int:category_id>')
-def category_posts(category_id):
-    posts = get_posts_by_category(category_id)
-    # Получаем информацию о категории
-    cur.execute('SELECT * FROM categories WHERE id = ?', [category_id])
-    category = cur.fetchone()
-    if not category:
-        return "Категория не найдена", 404
-    return render_template('category.html',
-                           posts=posts,
-                           category=category,
-                           user_name=session.get('user_name'))
-
-
 
 # Страница пользователя
 @app.route('/user/<int:user_id>')
@@ -556,23 +441,12 @@ def add_post():
     if request.method == 'POST':
         title = request.form.get('title')
         content = request.form.get('content')
-        category_id = request.form.get('category')
-        if 'user_id' in session:
-            user_id = session['user_id']
-        else:
-            return redirect('/login')
-        add_new_post(title, content, user_id, category_id)
-        # Получаем название категории для лога
-        cur.execute('SELECT name FROM categories WHERE id = ?', [category_id])
-        category_name = cur.fetchone()
-        category_name = category_name[0] if category_name else 'Неизвестно'
-
-        log_notification(user_id, 'new_post', 
-                         f'Создан пост "{title}" в категории "{category_name}"')
+        user_id = 1  # Временное решение - ID первого пользователя
+        add_new_post(title, content, user_id)
+        # Логируем создание поста
+        log_notification(user_id, 'new_post', f'Создан пост "{title}"')
         return redirect('/')
-    # При GET-запросе передаем категории в шаблон
-    categories = get_all_categories()
-    return render_template('new_post.html', categories=categories)
+    return render_template('new_post.html')
 
 if __name__ == '__main__':
     app.run()
