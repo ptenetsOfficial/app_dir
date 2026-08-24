@@ -460,7 +460,7 @@ def register():
                 notify_subscribers_about_new_user(name, email)
             except Exception as e:
                 print(f"Ошибка при уведомлении подписчиков: {e}")
-            return redirect('/login/')
+            return redirect('/login')
         else:
             print('Такой пользователь уже есть')
     return render_template('register.html')
@@ -499,7 +499,7 @@ def login():
 @app.route('/profile/')
 def profile():
     if 'user_id' not in session:
-        return redirect('/login/')
+        return redirect('/login')
     user_id = session['user_id']
     user = get_user_by_id(user_id)
     posts = get_posts_by_user(user_id)
@@ -560,7 +560,7 @@ def add_post():
         if 'user_id' in session:
             user_id = session['user_id']
         else:
-            return redirect('/login/')
+            return redirect('/login')
         add_new_post(title, content, user_id, category_id)
         # Получаем название категории для лога
         cur.execute('SELECT name FROM categories WHERE id = ?', [category_id])
