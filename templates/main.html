@@ -25,7 +25,7 @@
             <p>Вы вошли как: <strong>{{ user_name }}</strong></p>
             <a href="/logout">Выйти</a>
             {% else %}
-            <a href="{{ url_for('register') }}">регистрация</a>
+            <a href="{{ url_for('register') }}">Регистрация</a>
             <a href="{{ url_for('login') }}">Вход</a>
             {% endif %}
 

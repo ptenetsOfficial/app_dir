@@ -466,6 +466,7 @@ def register():
     return render_template('register.html')
 
 # Процесс входа
+@app.route('/login', methods=['GET', 'POST'])
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -495,6 +496,7 @@ def login():
 
 # Профиль текущего пользователя
 @app.route('/profile')
+@app.route('/profile/')
 def profile():
     if 'user_id' not in session:
         return redirect('/login/')
