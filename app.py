@@ -22,8 +22,10 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 # Загружаем переменные окружения из .env файла
 load_dotenv()
 
-# Подключение к базе данных
-conn = sqlite3.connect('users.db', check_same_thread=False)
+# Подключение к базе данных. Render создаст этот файл при первом запуске.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_PATH = os.path.join(BASE_DIR, 'users.db')
+conn = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
 cur = conn.cursor()
 
 # Создание таблицы пользователей
