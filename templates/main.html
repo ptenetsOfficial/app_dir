@@ -3,12 +3,23 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Главная страница</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
     <div class="header">
         <h1>Главная</h1>
+        <!-- Форма поиска -->
+        <div class="search-form">
+            <form action="/search" method="GET">
+                <input type="text" name="q" placeholder="Поиск постов..."
+                    value="{{ search_query if search_query else '' }}">
+                <button type="submit">Найти</button>
+            </form>
+        </div>
+
         <div class="auth-section">
             {% if user_name %}
             <p>Вы вошли как: <strong>{{ user_name }}</strong></p>
@@ -27,17 +38,29 @@
     </div>
     {% endif %}
 
+    <section class="posts-section">
+        <h2>{% if search_query %}Результаты поиска{% else %}Все посты{% endif %}</h2>
+        {% if posts %}
+        <div class="post-list">
+            {% for post in posts %}
+            <article class="post-card">
+                <h3>{{ post[1] }}</h3>
+                <p>{{ post[2] }}</p>
+                <div class="post-meta">
+                    <span>Автор: {{ post[6] }}</span>
+                    <span>Категория: {{ post[7] if post[7] else 'Без категории' }}</span>
+                    <time datetime="{{ post[5] }}">{{ post[5] }}</time>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state">{% if search_query %}По запросу «{{ search_query }}» ничего не найдено.{% else %}Постов пока нет.{% endif %}</p>
+        {% endif %}
+    </section>
 
-    <h2>Все посты:</h2>
-    <ul>
-        {% for post in posts %}
-        <li>
-            <h3>{{ post[1] }}</h3>
-            <p>{{ post[2] }}</p>
-            <p><em>Автор: {{ post[5] }} | Создан: {{ post[4] }}</em></p>
-        </li>
-        {% endfor %}
-    </ul>
+
+
 
     <h3>Все пользователи:</h3>
     {% if users %}
